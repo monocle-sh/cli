@@ -1,0 +1,78 @@
+{
+  "name": "@monocle.sh/cli",
+  "version": "0.2.0",
+  "description": "Monocle CLI - upload source maps and manage your Monocle projects",
+  "keywords": [
+    "cli",
+    "error-tracking",
+    "monocle",
+    "observability",
+    "sourcemaps"
+  ],
+  "license": "Elastic-2.0",
+  "author": "Julien Ripouteau <julien@ripouteau.com>",
+  "bin": {
+    "monocle": "./dist/cli.mjs"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "dev": "./src/index.ts",
+      "default": "./dist/index.mjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": "./dist/index.mjs",
+      "./package.json": "./package.json"
+    },
+    "tag": "latest"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "oxfmt",
+    "typecheck": "tsgo --noEmit",
+    "test": "node --import @poppinss/ts-exec bin/test.ts",
+    "checks": "pnpm lint && pnpm typecheck && pnpm test",
+    "release": "release-it",
+    "prepublishOnly": "pnpm run build",
+    "prepare": "lefthook install || true"
+  },
+  "dependencies": {
+    "@clack/prompts": "^1.2.0",
+    "commander": "^14.0.3",
+    "ky": "^1.14.3",
+    "picocolors": "^1.1.1",
+    "picospinner": "^3.0.0",
+    "tinyglobby": "^0.2.15"
+  },
+  "devDependencies": {
+    "@adonisjs/tsconfig": "^2.0.0",
+    "@japa/assert": "^4.2.0",
+    "@japa/file-system": "^3.0.0",
+    "@japa/runner": "^5.3.0",
+    "@monocle.sh/studio": "^0.3.0",
+    "@poppinss/ts-exec": "^1.4.4",
+    "@release-it/conventional-changelog": "^10.0.6",
+    "@types/node": "^25.5.2",
+    "@typescript/native-preview": "7.0.0-dev.20251218.3",
+    "lefthook": "^2.1.4",
+    "oxfmt": "^0.43.0",
+    "oxlint": "^1.58.0",
+    "release-it": "^19.2.4",
+    "tsdown": "^0.21.7",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "packageManager": "pnpm@10.33.0"
+}
