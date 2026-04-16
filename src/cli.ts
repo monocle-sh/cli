@@ -108,7 +108,15 @@ studio
     }
 
     try {
-      await devtools.startServer({ port, host: options.host, dbPath: options.dbPath });
+      const { createCliUpdateBridge } = await import("./studio/update_bridge.js");
+      const updateBridge = createCliUpdateBridge({ currentVersion: pkg.version });
+
+      await devtools.startServer({
+        port,
+        host: options.host,
+        dbPath: options.dbPath,
+        updateBridge,
+      });
       if (options.open) exec(`open http://localhost:${port}`);
     } catch (error) {
       console.error(pc.red("Failed to start DevTools server"));
