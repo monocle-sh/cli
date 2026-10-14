@@ -77,7 +77,7 @@ monocle studio errors
 
 ## Declare a deployment
 
-Use a private application API key of type `full`. Browser keys and ingest DSNs cannot declare deployments.
+Use a Deploy key, created in your application settings. Legacy project keys also work. Browser keys and ingest DSNs cannot declare deployments.
 The environment slug must already exist in Monocle.
 
 ```bash
