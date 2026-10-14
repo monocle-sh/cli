@@ -271,6 +271,7 @@ test.group("deployment HTTP and command", () => {
         assert.equal(request.url, "/api/v1/deployments");
         assert.equal(request.method, "POST");
         assert.equal(request.headers["x-api-key"], "secret-api-key");
+        assert.match(request.headers["user-agent"] ?? "", /^monocle-cli\//);
         let body = "";
         request.on("data", (data) => {
           body += data;
@@ -332,6 +333,7 @@ test.group("deployment HTTP and command", () => {
         url: server.url,
         apiKey: "key",
         payload: { service: "api", environment: "prod", version: "2", status: "succeeded" },
+        userAgent: "monocle-cli/test",
       });
       assert.equal(status, 201);
       assert.equal(calls, 2);

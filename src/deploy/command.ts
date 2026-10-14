@@ -19,7 +19,9 @@ export class DeployCommand {
     return text;
   }
 
-  static async #run(options: DeployOptions): Promise<void> {
+  static async #run(input: { options: DeployOptions; cliVersion: string }): Promise<void> {
+    const options = input.options;
+
     try {
       if (options.apiKey !== undefined && !options.apiKey.trim())
         throw new DeploymentValidationError("Empty --api-key.");
@@ -36,7 +38,12 @@ export class DeployCommand {
       if (!apiKey?.trim())
         throw new DeploymentDetectionError("Missing --api-key or MONOCLE_API_KEY.");
 
-      const status = await DeploymentClient.send({ url, apiKey, payload: report.payload });
+      const status = await DeploymentClient.send({
+        url,
+        apiKey,
+        payload: report.payload,
+        userAgent: `monocle-cli/${input.cliVersion}`,
+      });
       const messages: Record<number, string> = {
         200: "Deployment updated.",
         201: "Deployment created.",
@@ -81,6 +88,8 @@ export class DeployCommand {
       .option("--url <url>", "Monocle API URL", "https://api.monocle.sh")
       .option("--strict", "Exit with code 1 on detection or request errors")
       .option("--dry-run", "Print payload and field provenance without sending")
-      .action((options: DeployOptions) => this.#run(options));
+      .action((options: DeployOptions) =>
+        this.#run({ options, cliVersion: program.version() ?? "unknown" }),
+      );
   }
 }

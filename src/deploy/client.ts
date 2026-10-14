@@ -5,6 +5,10 @@ export type DeploymentRequest = {
   url: string;
   apiKey: string;
   payload: DeploymentPayload;
+  /**
+   * Lets the API record CLI declarations with the `cli` source
+   */
+  userAgent: string;
 };
 
 export class DeploymentRequestError extends Error {}
@@ -61,7 +65,7 @@ export class DeploymentClient {
   static async send(input: DeploymentRequest): Promise<number> {
     try {
       const response = await ky.post(`${input.url}/api/v1/deployments`, {
-        headers: { "x-api-key": input.apiKey },
+        headers: { "x-api-key": input.apiKey, "user-agent": input.userAgent },
         json: input.payload,
         timeout: 5000,
         signal: AbortSignal.timeout(11_000),
