@@ -8,15 +8,21 @@ import { CiDetector } from "../src/deploy/ci.js";
 import { DeploymentMetadata } from "../src/deploy/metadata.js";
 import { DeploymentClient } from "../src/deploy/client.js";
 
-type RunOptions = { args?: string[]; env?: NodeJS.ProcessEnv };
+type RunOptions = { args?: string[]; env?: NodeJS.ProcessEnv; cwd?: string };
 
 class DeployTest {
   static async run(options: RunOptions = {}) {
     const child = spawn(
       process.execPath,
-      ["--import", "@poppinss/ts-exec", "src/cli.ts", "deploy", ...(options.args ?? [])],
+      [
+        "--import",
+        import.meta.resolve("@poppinss/ts-exec"),
+        resolve(import.meta.dirname, "../src/cli.ts"),
+        "deploy",
+        ...(options.args ?? []),
+      ],
       {
-        cwd: resolve(import.meta.dirname, ".."),
+        cwd: options.cwd ?? resolve(import.meta.dirname, ".."),
         env: { PATH: process.env.PATH, HOME: process.env.HOME, NO_COLOR: "1", ...options.env },
         stdio: ["ignore", "pipe", "pipe"],
       },
@@ -134,11 +140,31 @@ test.group("deployment CI metadata", () => {
       assert.notEqual(started.payload.externalId, retry.payload.externalId);
       assert.equal(started.payload.actor, fixture.actor);
       assert.equal(started.payload.commitSha, "a".repeat(40));
+      assert.notProperty(started.payload, "version");
       assert.equal(started.provenance.commitSha, `ci:${fixture.source}`);
       assert.equal(started.provenance.repositoryUrl, `ci:${fixture.source}`);
       assert.equal(started.provenance.externalId, `ci:${fixture.source}`);
       assert.match(started.payload.ciUrl!, /^https:\/\//);
       assert.isDefined(started.payload.repositoryUrl);
+    });
+  }
+
+  for (const fixture of cases) {
+    test(`${fixture.source}: empty optional CI values are ignored`, ({ assert }) => {
+      const env = Object.fromEntries(
+        Object.entries(fixture.env).map(([key, value]) => [
+          key,
+          /ACTOR|LOGIN|USERNAME|CREATOR|TRIGGERER|URL/.test(key) ? "" : value,
+        ]),
+      );
+      const ci = CiDetector.detect(env);
+      assert.isUndefined(ci.actor);
+      assert.notEqual(ci.ciUrl, "");
+      const report = DeploymentMetadata.resolve({
+        options: { service: "api", environment: "prod" },
+        env,
+      });
+      assert.notProperty(report.payload, "actor");
     });
   }
 
@@ -150,13 +176,19 @@ test.group("deployment CI metadata", () => {
     assert.equal(report.payload.externalId, "github:acme/shop:42:1:api:production");
   });
 
-  test("outside CI, no external identity is invented", ({ assert }) => {
+  test("outside CI, each invocation gets a unique external identity", ({ assert }) => {
     assert.deepEqual(CiDetector.detect({}), { source: "none" });
     const report = DeploymentMetadata.resolve({
       options: { service: "api", environment: "prod", version: "2.0.0" },
       env: {},
     });
-    assert.notProperty(report.payload, "externalId");
+    assert.match(report.payload.externalId!, /^cli:[0-9a-f-]{36}:api:prod$/);
+    assert.equal(report.provenance.externalId, "generated");
+    const next = DeploymentMetadata.resolve({
+      options: { service: "api", environment: "prod", version: "2.0.0" },
+      env: {},
+    });
+    assert.notEqual(next.payload.externalId, report.payload.externalId);
     assert.equal(report.provenance.commitSha, "git");
     assert.equal(report.provenance.status, "default");
   });
@@ -279,7 +311,7 @@ test.group("deployment HTTP and command", () => {
         }
         assert.equal(calls, status >= 500 ? 4 : 2);
         assert.equal((requests[0] as { version: string }).version, "2.0.0");
-        assert.deepEqual(requests[0], requests[1]);
+        if (status >= 500) assert.deepEqual(requests[0], requests[1]);
       } finally {
         await server.close();
       }
@@ -390,13 +422,15 @@ test.group("deployment HTTP and command", () => {
     }
   });
 
-  test("local validation always exits 1", async ({ assert }) => {
+  test("usage errors always exit 1", async ({ assert }) => {
     for (const args of [
       [],
       ["--service", "api"],
       ["--service", "api", "--environment", "prod", "--status", "bad"],
       ["--service", "api", "--environment", "prod", "--started-at", "yesterday"],
-      ["--service", "api", "--environment", "prod"],
+      ["--service", "api", "--environment", "prod", "--actor", ""],
+      ["--service", "api", "--environment", "prod", "--version", ""],
+      ["--service", "api", "--environment", "prod", "--api-key", ""],
     ]) {
       for (const strict of [false, true]) {
         const result = await DeployTest.run({ args: [...args, ...(strict ? ["--strict"] : [])] });
@@ -405,6 +439,98 @@ test.group("deployment HTTP and command", () => {
       }
     }
   }).timeout(20000);
+
+  test("missing API key or revision respects strict mode", async ({ assert }) => {
+    const cwd = mkdtempSync(join(tmpdir(), "deploy-command-no-git-"));
+    try {
+      for (const strict of [false, true]) {
+        for (const version of [undefined, "2.0.0"]) {
+          const result = await DeployTest.run({
+            cwd,
+            args: [
+              "--service",
+              "api",
+              "--environment",
+              "prod",
+              ...(version ? ["--version", version] : []),
+              ...(strict ? ["--strict"] : []),
+            ],
+          });
+          assert.equal(result.code, strict ? 1 : 0);
+          assert.include(result.stderr, strict ? "Error:" : "Warning:");
+          assert.include(result.stderr, version ? "Missing --api-key" : "Cannot detect a version");
+        }
+      }
+      for (const args of [
+        ["--status", "bad"],
+        ["--started-at", "yesterday"],
+      ]) {
+        const result = await DeployTest.run({
+          cwd,
+          args: ["--service", "api", "--environment", "prod", ...args],
+        });
+        assert.equal(result.code, 1);
+      }
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  }).timeout(20000);
+
+  test("dry run sends detected SHA only as commitSha", async ({ assert }) => {
+    const result = await DeployTest.run({
+      args: ["--service", "api", "--environment", "prod", "--dry-run"],
+      env: { VERCEL_GIT_COMMIT_SHA: "a".repeat(40) },
+    });
+    assert.equal(result.code, 0);
+    const report = JSON.parse(result.stdout.slice(result.stdout.indexOf("{")));
+    assert.notProperty(report.payload, "version");
+    assert.notProperty(report.provenance, "version");
+    assert.equal(report.payload.commitSha, "a".repeat(40));
+    assert.equal(report.provenance.commitSha, "platform:vercel");
+  });
+
+  test("timeout retry outside CI reuses the generated identity", async ({ assert }) => {
+    const requests: { externalId: string }[] = [];
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const server = await DeployTest.server((request, response) => {
+      let body = "";
+      request.on("data", (data) => {
+        body += data;
+      });
+      request.on("end", () => {
+        requests.push(JSON.parse(body));
+        if (requests.length === 1) {
+          timer = setTimeout(() => response.writeHead(201).end(), 6000);
+          return;
+        }
+        response.writeHead(200).end();
+      });
+    });
+    try {
+      const result = await DeployTest.run({
+        args: [
+          "--service",
+          "api",
+          "--environment",
+          "prod",
+          "--version",
+          "2.0.0",
+          "--api-key",
+          "secret",
+          "--url",
+          server.url,
+          "--strict",
+        ],
+      });
+      assert.equal(result.code, 0);
+      assert.equal(requests.length, 2);
+      assert.match(requests[0].externalId, /^cli:[0-9a-f-]{36}:api:prod$/);
+      assert.deepEqual(requests[0], requests[1]);
+    } finally {
+      clearTimeout(timer);
+      await server.close();
+    }
+  }).timeout(15000);
 
   test("API keys are redacted even when echoed in the dry-run payload", async ({ assert }) => {
     const result = await DeployTest.run({

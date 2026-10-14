@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { detectServiceVersion } from "@monocle.sh/otel-utils/service-version";
 import { DeploymentProvenance } from "./provenance.js";
 import { CiDetector } from "./ci.js";
@@ -10,6 +11,8 @@ import type {
 
 export class DeploymentValidationError extends Error {}
 
+export class DeploymentDetectionError extends Error {}
+
 export class DeploymentMetadata {
   static #required(input: { value: string | undefined; field: string }): string {
     const { value, field } = input;
@@ -19,11 +22,6 @@ export class DeploymentMetadata {
   }
 
   static #validate(payload: DeploymentPayload): void {
-    if (!payload.version && !payload.commitSha) {
-      throw new DeploymentValidationError(
-        "Cannot detect a version. Provide --version or --commit.",
-      );
-    }
     if (!["started", "succeeded", "failed", "canceled"].includes(payload.status)) {
       throw new DeploymentValidationError(
         "Invalid --status. Use started, succeeded, failed, or canceled.",
@@ -55,7 +53,11 @@ export class DeploymentMetadata {
     const { options, detected, ci, service, environment } = input;
 
     return {
-      version: [options.version, detected.version, detected.source],
+      version: [
+        options.version,
+        ["env", "config"].includes(detected.source) ? detected.version : undefined,
+        detected.source,
+      ],
       commitSha: [
         options.commit,
         detected.commitSha,
@@ -76,8 +78,8 @@ export class DeploymentMetadata {
       ],
       externalId: [
         options.externalId,
-        ci.externalId ? `${ci.externalId}:${service}:${environment}` : undefined,
-        ci.source,
+        `${ci.externalId ?? `cli:${randomUUID()}`}:${service}:${environment}`,
+        ci.externalId ? ci.source : "generated",
       ],
       actor: [options.actor, ci.actor, ci.source],
       ciUrl: [options.ciUrl, ci.ciUrl, ci.source],
@@ -129,12 +131,17 @@ export class DeploymentMetadata {
     for (const [field, [flag, fallback, source]] of Object.entries(fields)) {
       const value = flag ?? fallback;
       if (value === undefined) continue;
-      if (!value.trim()) throw new DeploymentValidationError(`Empty ${field}.`);
+      if (flag !== undefined && !flag.trim())
+        throw new DeploymentValidationError(`Empty ${field}.`);
+      if (!value.trim()) continue;
       const key = field as keyof typeof fields;
       payload[key] = value;
       provenance[key] = flag !== undefined ? "flag" : source;
     }
     this.#validate(payload);
+    if (!payload.version && !payload.commitSha) {
+      throw new DeploymentDetectionError("Cannot detect a version. Provide --version or --commit.");
+    }
 
     return { payload, provenance };
   }

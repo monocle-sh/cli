@@ -94,12 +94,12 @@ monocle deploy --service api --environment production --dry-run
 | --------------------------- | ----------------------------------------------------------------------- |
 | `--service <name>`          | Required                                                                |
 | `--environment <slug>`      | `MONOCLE_ENVIRONMENT`, otherwise required                               |
-| `--version <version>`       | Shared SDK detection: `MONOCLE_VERSION`, hosting platform, CI, then Git |
+| `--version <version>`       | Explicit version or `MONOCLE_VERSION`; detected SHA goes in `commitSha` |
 | `--commit <sha>`            | Detected from the environment or Git                                    |
 | `--status <status>`         | `succeeded`; also accepts `started`, `failed`, and `canceled`           |
 | `--started-at <timestamp>`  | Omitted; accepts ISO 8601 with a timezone                               |
 | `--finished-at <timestamp>` | Omitted; the server uses receipt time for `succeeded`                   |
-| `--external-id <id>`        | CI identity; omitted outside recognized CI                              |
+| `--external-id <id>`        | CI identity; generated UUID outside recognized CI                       |
 | `--actor <actor>`           | CI actor                                                                |
 | `--ci-url <url>`            | CI run URL                                                              |
 | `--api-key <key>`           | `MONOCLE_API_KEY`                                                       |
@@ -110,6 +110,8 @@ monocle deploy --service api --environment production --dry-run
 The CLI detects GitHub Actions, GitLab CI, CircleCI, Buildkite, and Bitbucket Pipelines.
 It also includes the repository URL when the SDK detector provides one.
 Flags override detected values. An explicit version is sent unchanged.
+Automatically detected revisions are sent only as `commitSha`, so the server can find an existing release by commit.
+Dry runs show `commitSha` and its provenance without a `version` field in this case.
 
 The same CI identity updates a deployment from `started` to a terminal status.
 GitHub identities include the repository, run ID, run attempt, service, and environment.
@@ -118,10 +120,10 @@ CircleCI uses the workflow ID. Bitbucket uses the pipeline UUID and step run num
 If calls span jobs with different identities, provide the same `--external-id` to both calls and include your own retry identifier.
 Outside CI, each call creates a deployment unless you provide `--external-id`.
 
-Request failures print a warning to stderr and exit with code 0. With `--strict`, they exit with code 1.
-Local validation errors always exit with code 1.
+Missing API keys, undetectable versions or commits, and request failures print a warning to stderr and exit with code 0. With `--strict`, they exit with code 1.
+Usage errors always exit with code 1, including missing service or environment, invalid status or timestamps, and explicitly empty flags.
 Each request times out after 5 seconds. Network errors, timeouts, and HTTP 5xx responses retry once after 300 ms.
-A retry without an external ID can create a duplicate if the server stored the first request but its response was lost.
+Outside CI, the CLI generates `cli:<uuid>:<service>:<environment>` once per invocation. Retries reuse this identity.
 HTTP 202 means the deployments feature is disabled and no deployment was stored.
 
 ### GitHub Actions example
