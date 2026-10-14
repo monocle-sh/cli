@@ -5,5 +5,8 @@ export default defineConfig({
   format: ["esm"],
   clean: true,
   dts: true,
-  external: ["@monocle.sh/studio"],
+  deps: {
+    alwaysBundle: [/^@monocle\.sh\/otel-utils(?:\/|$)/],
+    neverBundle: ["@monocle.sh/studio"],
+  },
 });
