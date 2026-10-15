@@ -10,7 +10,7 @@ export class StudioApi {
 
   constructor(port: number) {
     this.#client = ky.create({
-      prefixUrl: `http://localhost:${port}`,
+      prefix: `http://localhost:${port}`,
     });
   }
 

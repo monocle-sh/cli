@@ -49,8 +49,7 @@ export class DeploymentClient {
         "Authentication failed. Use a Deploy key from your application settings.",
       );
     if (status === 422) {
-      const body = await error.response.json().catch(() => undefined);
-      const slugs = this.#slugs(body);
+      const slugs = this.#slugs(error.data);
 
       return new DeploymentRequestError(
         `Deployment rejected (422). Check the payload.${slugs.length ? ` Available environments: ${slugs.join(", ")}.` : ""}`,
