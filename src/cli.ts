@@ -7,6 +7,7 @@ import pc from "picocolors";
 import { program } from "commander";
 
 import { uploadSourcemaps, UploadError } from "./upload.js";
+import { DeployCommand } from "./deploy/command.js";
 import { homedir } from "node:os";
 import { exec } from "node:child_process";
 
@@ -18,6 +19,7 @@ console.log();
 
 program
   .name("monocle")
+  .enablePositionalOptions()
   .description("Monocle CLI - upload source maps and manage your Monocle projects")
   .version(pkg.version);
 
@@ -172,4 +174,6 @@ studio
     await installAgents(options);
   });
 
-program.parse();
+DeployCommand.register(program);
+
+await program.parseAsync();
