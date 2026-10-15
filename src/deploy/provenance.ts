@@ -15,10 +15,10 @@ export class DeploymentProvenance {
       "platform:dokku": ["GIT_REV"],
       "platform:cloud-run": ["K_REVISION"],
       "ci:github": ["GITHUB_"],
-      "ci:gitlab": ["CI_"],
-      "ci:circleci": ["CIRCLE_"],
+      "ci:gitlab": ["CI_", "GITLAB_CI"],
+      "ci:circleci": ["CIRCLE"],
       "ci:bitbucket": ["BITBUCKET_"],
-      "ci:buildkite": ["BUILDKITE_"],
+      "ci:buildkite": ["BUILDKITE"],
     };
     for (const [source, prefixes] of Object.entries(groups)) {
       const subset = Object.fromEntries(

@@ -65,6 +65,8 @@ test.group("deployment CI metadata", () => {
     {
       source: "github",
       env: {
+        GITHUB_ACTIONS: "true",
+        GITHUB_SERVER_URL: "https://github.com",
         GITHUB_RUN_ID: "42",
         GITHUB_RUN_ATTEMPT: "1",
         GITHUB_REPOSITORY: "acme/shop",
@@ -77,6 +79,7 @@ test.group("deployment CI metadata", () => {
     {
       source: "gitlab",
       env: {
+        GITLAB_CI: "true",
         CI_PIPELINE_ID: "42",
         CI_JOB_ID: "8",
         CI_PROJECT_PATH: "acme/shop",
@@ -91,6 +94,7 @@ test.group("deployment CI metadata", () => {
     {
       source: "circleci",
       env: {
+        CIRCLECI: "true",
         CIRCLE_WORKFLOW_ID: "workflow-1",
         CIRCLE_USERNAME: "alice",
         CIRCLE_BUILD_URL: "https://circleci.com/job/8",
@@ -103,6 +107,7 @@ test.group("deployment CI metadata", () => {
     {
       source: "buildkite",
       env: {
+        BUILDKITE: "true",
         BUILDKITE_BUILD_ID: "build-1",
         BUILDKITE_JOB_ID: "job-1",
         BUILDKITE_BUILD_CREATOR: "alice",
@@ -229,7 +234,12 @@ test.group("deployment CI metadata", () => {
   test("version and environment use env defaults", ({ assert }) => {
     const report = DeploymentMetadata.resolve({
       options: { service: "api" },
-      env: { MONOCLE_VERSION: "2.1.0", MONOCLE_ENVIRONMENT: "prod", GITHUB_SHA: "a".repeat(40) },
+      env: {
+        MONOCLE_VERSION: "2.1.0",
+        MONOCLE_ENVIRONMENT: "prod",
+        GITHUB_ACTIONS: "true",
+        GITHUB_SHA: "a".repeat(40),
+      },
     });
     assert.equal(report.payload.version, "2.1.0");
     assert.equal(report.provenance.version, "env");
