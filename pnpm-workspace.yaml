@@ -1,0 +1,7 @@
+minimumReleaseAgeExclude:
+  - "@monocle.sh/otel-utils@1.7.0"
+
+allowBuilds:
+  "@swc/core": true
+  lefthook: true
+  protobufjs: false
