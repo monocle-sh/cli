@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <a href="https://docs.monocle.sh/studio/overview">Docs</a>
+  <a href="https://monocle.sh/docs/studio/overview">Docs</a>
   ·
   <a href="https://monocle.sh">Website</a>
   ·
