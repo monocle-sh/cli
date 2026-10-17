@@ -1,3 +1,5 @@
+provenance: false
+
 allowBuilds:
   "@swc/core": true
   lefthook: true
