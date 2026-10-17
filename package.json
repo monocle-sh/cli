@@ -57,12 +57,12 @@
   },
   "devDependencies": {
     "@adonisjs/tsconfig": "^2.0.0",
-    "@changesets/changelog-github": "^0.6.0",
-    "@changesets/cli": "^2.31.1",
+    "@changesets/changelog-github": "^1.0.1",
+    "@changesets/cli": "^3.0.3",
     "@japa/assert": "^4.2.0",
     "@japa/file-system": "^3.0.0",
     "@japa/runner": "^5.4.0",
-    "@monocle.sh/otel-utils": "^1.7.0",
+    "@monocle.sh/otel-utils": "^1.8.0",
     "@monocle.sh/studio": "^0.4.0",
     "@poppinss/ts-exec": "^1.5.0",
     "@types/node": "^26.6.5",
@@ -75,5 +75,5 @@
   "engines": {
     "node": ">=22.12.0"
   },
-  "packageManager": "pnpm@12.11.2"
+  "packageManager": "pnpm@12.14.0"
 }
