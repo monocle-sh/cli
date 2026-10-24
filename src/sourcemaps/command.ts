@@ -83,6 +83,11 @@ export class SourcemapsCommand {
 
     const host = this.#sanitizeUrl(options.url);
     const spinner = new Spinner(`Uploading source maps to ${host}...`);
+    // Printed once the spinner stops, such as a plain HTTP API URL.
+    const warnings: string[] = [];
+    const printWarnings = () => {
+      for (const warning of warnings) console.warn(pc.yellow(`Warning: ${warning}`));
+    };
     spinner.start();
 
     try {
@@ -91,7 +96,10 @@ export class SourcemapsCommand {
         apiKey,
         apiUrl: options.url,
         release: options.release,
-        logger: { info: (message) => spinner.setText(message), warn: () => {} },
+        logger: {
+          info: (message) => spinner.setText(message),
+          warn: (message) => warnings.push(message),
+        },
       });
       const count = result.uploaded.length + result.skipped.length;
       if (count === 0) {
@@ -106,6 +114,7 @@ export class SourcemapsCommand {
           (options.release ? ` for release ${pc.cyan(options.release)}` : "") +
           (result.skipped.length ? pc.dim(` (${result.skipped.length} already uploaded)`) : ""),
       );
+      printWarnings();
       for (const file of result.uploaded)
         console.log(pc.dim(`  ${file.filePath} ${pc.cyan(file.debugId)}`));
     } catch (error) {
@@ -114,6 +123,7 @@ export class SourcemapsCommand {
           ? "Some source maps failed to upload"
           : "Source map upload failed",
       );
+      printWarnings();
       this.#handleError(error);
     }
   }

@@ -247,6 +247,22 @@ test.group("sourcemaps upload", (group) => {
     }
   });
 
+  test("warns when the API URL is plain HTTP to another host", async ({ assert }) => {
+    await SourcemapsTest.run(["inject", directory]);
+    const result = await SourcemapsTest.run(
+      ["upload", directory, "--url", "http://user:secret@monocle.invalid"],
+      { MONOCLE_API_KEY: "key" },
+    );
+
+    assert.equal(result.code, 1);
+    assert.include(
+      result.stderr,
+      "Warning: http://monocle.invalid is not encrypted: use https:// to protect your API key and source code.",
+    );
+    assert.include(result.stderr, "Error: Could not reach monocle.invalid");
+    assert.notInclude(result.stderr + result.stdout, "secret");
+  });
+
   test("exits with code 1 without an API key", async ({ assert }) => {
     const result = await SourcemapsTest.run(["upload", directory]);
 
