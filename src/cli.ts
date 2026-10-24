@@ -6,8 +6,8 @@ import { readdirSync, readFileSync, rmSync } from "node:fs";
 import pc from "picocolors";
 import { program } from "commander";
 
-import { uploadSourcemaps, UploadError } from "./upload.js";
 import { DeployCommand } from "./deploy/command.js";
+import { SourcemapsCommand } from "./sourcemaps/command.js";
 import { homedir } from "node:os";
 import { exec } from "node:child_process";
 
@@ -23,52 +23,7 @@ program
   .description("Monocle CLI - upload source maps and manage your Monocle projects")
   .version(pkg.version);
 
-program
-  .command("sourcemaps")
-  .description("Manage source maps")
-  .command("upload")
-  .description("Upload source maps to Monocle")
-  .argument("<patterns...>", "Glob patterns for source map files (e.g., ./dist/**/*.map)")
-  .option("--api-key <key>", "Monocle API key (or set MONOCLE_API_KEY env var)")
-  .option("--release <version>", "Release version (e.g., v1.2.3 or git SHA)")
-  .option("--url <url>", "Monocle API URL", "https://api.monocle.sh")
-  .option("--dry-run", "Show what would be uploaded without uploading")
-  .action(async (patterns: string[], options) => {
-    const apiKey = options.apiKey || process.env.MONOCLE_API_KEY;
-
-    if (!apiKey) {
-      console.error(pc.red("Error: Missing API key"));
-      console.error("Provide --api-key option or set MONOCLE_API_KEY environment variable");
-      process.exit(1);
-    }
-
-    if (!options.release) {
-      console.error(pc.red("Error: Missing --release option"));
-      console.error(
-        "Provide a release version (e.g., --release=v1.2.3 or --release=$(git rev-parse HEAD))",
-      );
-      process.exit(1);
-    }
-
-    try {
-      await uploadSourcemaps({
-        patterns,
-        apiKey,
-        release: options.release,
-        apiUrl: options.url,
-        dryRun: options.dryRun,
-      });
-    } catch (error) {
-      // UploadError messages are already sanitized (no API keys, etc.)
-      // For unexpected errors, show a generic message
-      if (error instanceof UploadError) {
-        console.error(pc.red(`Error: ${error.message}`));
-      } else {
-        console.error(pc.red("Error: An unexpected error occurred"));
-      }
-      process.exit(1);
-    }
-  });
+SourcemapsCommand.register(program);
 
 /**
  * `monocle studio` command group — local DevTools server and data access.
