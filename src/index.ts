@@ -1,10 +1,11 @@
 export {
+  injectDebugIds,
   uploadSourcemaps,
-  findSourcemapFiles,
-  loadAndValidateSourcemap,
-  validateSourcemap,
-  UploadError,
+  SourcemapsError,
+  SourcemapsUploadError,
+  type InjectDebugIdsOptions,
+  type InjectDebugIdsResult,
+  type InjectedFile,
   type UploadSourcemapsOptions,
-  type UploadResult,
-  type SourcemapFile,
-} from "./upload.js";
+  type UploadSourcemapsResult,
+} from "@monocle.sh/sourcemaps";

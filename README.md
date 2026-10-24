@@ -75,6 +75,34 @@ monocle studio errors
   --trace-id       Filter by trace ID
 ```
 
+## Source maps
+
+Monocle resolves minified stack traces with **debug IDs**: each built JavaScript file and its source map share an ID, and the Monocle SDKs send it with every error. Matching never relies on file names or releases.
+
+Using Vite? [`@monocle.sh/vite-plugin`](https://github.com/monocle-sh/js-sdk/tree/main/packages/vite-plugin) does both steps after each build. For any other bundler, run these commands after the build, before deploying:
+
+```bash
+# 1. Add a debug ID to every .js/.mjs/.cjs file that has a source map, and to its map.
+#    Safe to run twice: injected files are skipped.
+monocle sourcemaps inject ./dist
+
+# 2. Upload each file and its map. Files Monocle already has are skipped.
+export MONOCLE_API_KEY="your-private-application-key"
+monocle sourcemaps upload ./dist --release "$(git rev-parse HEAD)"
+```
+
+Then deploy the injected files: the runtime snippet at the top of each file is what lets the SDK report its debug ID. You can delete the `.map` files from your deployment after the upload.
+
+### Upload options
+
+| Option                | Default                  |
+| --------------------- | ------------------------ |
+| `--api-key <key>`     | `MONOCLE_API_KEY`        |
+| `--url <url>`         | `https://api.monocle.sh` |
+| `--release <version>` | None; display only       |
+
+`upload` fails with code 1 when a file has a source map but no debug ID (run `inject` first), when the API key is missing or rejected, or when a file could not be stored. Network errors and HTTP 5xx responses are retried.
+
 ## Declare a deployment
 
 Use a Deploy key, created in your application settings. Legacy project keys also work. Browser keys and ingest DSNs cannot declare deployments.
