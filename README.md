@@ -105,7 +105,7 @@ Then deploy the injected files: the runtime snippet at the top of each file is w
 
 ## Declare a deployment
 
-Use a Deploy key, created in your application settings. Legacy project keys also work. Browser keys and ingest DSNs cannot declare deployments.
+Use a project token, created in your project settings. Legacy API keys also work. Browser keys and ingest DSNs cannot declare deployments.
 The environment slug must already exist in Monocle.
 
 ```bash

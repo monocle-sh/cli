@@ -46,7 +46,7 @@ export class DeploymentClient {
     const status = error.response.status;
     if (status === 401 || status === 403)
       return new DeploymentRequestError(
-        "Authentication failed. Use a Deploy key from your application settings.",
+        "Authentication failed. Use a project token from your project settings.",
       );
     if (status === 422) {
       const slugs = this.#slugs(error.data);
