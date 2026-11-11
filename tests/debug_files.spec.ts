@@ -235,3 +235,40 @@ test.group("debug-files upload", (group) => {
     }
   });
 });
+
+test.group("debug-files check", (group) => {
+  let build: ReturnType<typeof DebugFilesTest.build>;
+
+  group.each.setup(() => {
+    build = DebugFilesTest.build();
+    return () => rmSync(build.directory, { recursive: true, force: true });
+  });
+
+  test("finds the sources of a build with relative DWARF paths", async ({ assert }) => {
+    // Path remapping, as with --remap-path-prefix in Rust, records paths relative to the build.
+    execFileSync(
+      "cc",
+      [
+        "-g",
+        "-O0",
+        "-Wl,--build-id",
+        `-fdebug-prefix-map=${build.directory}=.`,
+        "-o",
+        "relative",
+        "src/app.c",
+      ],
+      { cwd: build.directory },
+    );
+    const result = await DebugFilesTest.run([
+      "check",
+      join(build.directory, "relative"),
+      "--include-sources",
+      "--root",
+      build.directory,
+    ]);
+
+    assert.equal(result.code, 0, result.stderr);
+    assert.include(result.stdout, "Sources: 1 file(s)");
+    assert.include(result.stdout, "    src/app.c\n");
+  });
+});

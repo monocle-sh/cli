@@ -48,17 +48,18 @@ struct BundleFile {
 
 /// Compare whole path components, never basenames or a textual prefix such as /build vs /build-other.
 /// Backslashes are DWARF separators, as in symbolic's clean_path and join_path.
+/// `has_root`, not `is_absolute`: on wasm32-unknown-unknown, `is_absolute` is always false.
 fn relative_path(path: &str, prefix: &str) -> Option<PathBuf> {
     let path = path.replace('\\', "/");
     let prefix = prefix.replace('\\', "/");
     let prefix = Path::new(&prefix);
-    let mapped = if !Path::new(&path).is_absolute() && prefix.is_absolute() {
+    let mapped = if !Path::new(&path).has_root() && prefix.has_root() {
         symbolic_common::clean_path(&symbolic_common::join_path(prefix.to_str()?, &path)).into_owned()
     } else {
         path
     };
     let path = Path::new(&mapped);
-    if path.is_absolute() != prefix.is_absolute() {
+    if path.has_root() != prefix.has_root() {
         return None;
     }
     let relative = path.strip_prefix(prefix).ok()?;
