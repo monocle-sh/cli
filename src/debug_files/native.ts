@@ -1,3 +1,4 @@
+import type { NonSharedBuffer } from "node:buffer";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
@@ -56,7 +57,7 @@ export class NativeModule {
   /**
    * Reads `[status][u32 length][payload]`, copies the payload out of wasm memory and frees it.
    */
-  static #read(wasm: Exports, pointer: number): Buffer {
+  static #read(wasm: Exports, pointer: number): NonSharedBuffer {
     const view = new DataView(wasm.memory.buffer);
     const status = view.getUint8(pointer);
     const length = view.getUint32(pointer + 1, true);
@@ -89,7 +90,7 @@ export class NativeModule {
   static async bundle(options: {
     codeId: string;
     files: Array<{ path: string; text: string }>;
-  }): Promise<Buffer> {
+  }): Promise<NonSharedBuffer> {
     const wasm = await this.#load();
     const input = Buffer.from(JSON.stringify(options), "utf8");
 

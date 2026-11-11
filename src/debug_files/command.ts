@@ -1,3 +1,4 @@
+import type { NonSharedBuffer } from "node:buffer";
 import { readFile, realpath, stat } from "node:fs/promises";
 import { basename } from "node:path";
 
@@ -184,7 +185,10 @@ export class DebugFilesCommand {
 
       // Read every file and build every bundle before the first request, so an invalid file
       // anywhere in the list uploads nothing.
-      const builds = new Map<string, { file: string; bytes: Buffer; bundle?: Buffer }>();
+      const builds = new Map<
+        string,
+        { file: string; bytes: NonSharedBuffer; bundle?: NonSharedBuffer }
+      >();
       for (const file of files) {
         const { bytes, inspection } = await this.#inspect(file, sources);
         const id = pc.cyan(`elf:${inspection.codeId}`);

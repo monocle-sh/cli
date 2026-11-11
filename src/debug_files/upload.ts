@@ -1,3 +1,5 @@
+import type { NonSharedBuffer } from "node:buffer";
+
 import ky, { isHTTPError, type HTTPError } from "ky";
 
 export class NativeUploadError extends Error {}
@@ -75,11 +77,11 @@ export class NativeUploader {
     }
   }
 
-  async #put(url: string, body: Buffer): Promise<void> {
+  async #put(url: string, body: NonSharedBuffer): Promise<void> {
     try {
       const response = await http.put(url, {
         headers: { "content-type": "application/octet-stream" },
-        body: new Uint8Array(body),
+        body,
       });
       await response.body?.cancel();
     } catch (error) {
@@ -96,7 +98,7 @@ export class NativeUploader {
     codeId: string;
     kind: "debug" | "sources";
     fileName: string;
-    bytes: Buffer;
+    bytes: NonSharedBuffer;
   }): Promise<"uploaded" | "exists"> {
     const prepared = await this.#post<Prepared>("/native-symbols/uploads", {
       release: this.options.release,
