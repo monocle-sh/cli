@@ -32,9 +32,15 @@ export class NativeModule {
 
   static #load(): Promise<Exports> {
     this.#instance ??= (async () => {
-      const path = fileURLToPath(import.meta.resolve("@monocle.sh/cli/monocle_native.wasm"));
-      const { instance } = await WebAssembly.instantiate(await readFile(path), {});
-      return instance.exports as unknown as Exports;
+      try {
+        const path = fileURLToPath(import.meta.resolve("@monocle.sh/cli/monocle_native.wasm"));
+        const { instance } = await WebAssembly.instantiate(await readFile(path), {});
+        return instance.exports as unknown as Exports;
+      } catch {
+        throw new NativeModuleError(
+          "could not load monocle_native.wasm. Reinstall @monocle.sh/cli.",
+        );
+      }
     })();
 
     return this.#instance;

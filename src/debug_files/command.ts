@@ -49,6 +49,18 @@ export class DebugFilesCommand {
   }
 
   /**
+   * Names the debug file in errors of the WebAssembly module, such as an invalid ELF file.
+   */
+  static async #native<T>(file: string, operation: Promise<T>): Promise<T> {
+    try {
+      return await operation;
+    } catch (error) {
+      if (error instanceof NativeModuleError) throw new DebugFileError(`${file}: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
    * Reads a debug file and checks that Monocle can use it.
    */
   static async #inspect(file: string, sources: { root: string; prefix: string } | undefined) {
@@ -60,11 +72,23 @@ export class DebugFilesCommand {
           "objcopy --only-keep-debug --compress-debug-sections=zlib <binary> <binary>.debug",
       );
 
-    const bytes = await readFile(file);
-    const inspection = await NativeModule.inspect({ bytes, prefix: sources?.prefix });
-    if (!inspection.codeId)
+    const bytes = await readFile(file).catch((error: NodeJS.ErrnoException) => {
+      throw new DebugFileError(`Could not read ${file} (${error.code ?? error.message})`);
+    });
+    const inspection = await this.#native(
+      file,
+      NativeModule.inspect({ bytes, prefix: sources?.prefix }),
+    );
+    const codeId = inspection.codeId;
+    if (!codeId)
       throw new DebugFileError(
         `${file} has no GNU build ID. Link with -C link-arg=-Wl,--build-id and rebuild.`,
+      );
+    // The API only accepts 4 to 64 byte build IDs: fail before reading sources or sending anything.
+    if (!/^(?:[\da-f]{2}){4,64}$/.test(codeId))
+      throw new DebugFileError(
+        `${file} has a ${codeId.length / 2} byte build ID; Monocle accepts 4 to 64 bytes. ` +
+          "Link with -C link-arg=-Wl,--build-id and rebuild.",
       );
     if (!inspection.hasDebugInfo)
       throw new DebugFileError(
@@ -72,7 +96,7 @@ export class DebugFilesCommand {
           "and upload the binary before stripping it.",
       );
 
-    return { bytes, inspection: inspection as Inspection & { codeId: string } };
+    return { bytes, inspection: { ...inspection, codeId } };
   }
 
   static async #sourceOptions(options: SourceOptions) {
@@ -88,7 +112,7 @@ export class DebugFilesCommand {
 
   static async #collect(options: {
     file: string;
-    inspection: Inspection & { codeId: string };
+    inspection: Inspection;
     sources: { root: string; prefix: string };
   }) {
     const { files, counts } = await SourceCollector.collect({
@@ -158,21 +182,33 @@ export class DebugFilesCommand {
         force: options.force,
       });
 
-      const seen = new Set<string>();
+      // Read every file and build every bundle before the first request, so an invalid file
+      // anywhere in the list uploads nothing.
+      const builds = new Map<string, { file: string; bytes: Buffer; bundle?: Buffer }>();
       for (const file of files) {
         const { bytes, inspection } = await this.#inspect(file, sources);
         const id = pc.cyan(`elf:${inspection.codeId}`);
         // A binary and its extracted .debug share a build ID: upload it once.
-        if (seen.has(inspection.codeId)) {
+        if (builds.has(inspection.codeId)) {
           console.log(pc.dim(`${file} ${id}: same build as a previous file, skipped`));
           continue;
         }
-        seen.add(inspection.codeId);
+        console.log(`${file} ${id} ${pc.dim(this.#size(bytes.length))}`);
 
-        // Collect before uploading anything, so a source error leaves no partial upload.
         const collected = sources ? await this.#collect({ file, inspection, sources }) : undefined;
+        const bundle = collected
+          ? await this.#native(
+              file,
+              NativeModule.bundle({ codeId: inspection.codeId, files: collected }),
+            )
+          : undefined;
+        builds.set(inspection.codeId, { file, bytes, bundle });
+      }
+
+      for (const [codeId, { file, bytes, bundle }] of builds) {
+        const id = pc.cyan(`elf:${codeId}`);
         const debug = await uploader.upload({
-          codeId: inspection.codeId,
+          codeId,
           kind: "debug",
           fileName: basename(file),
           bytes,
@@ -180,11 +216,10 @@ export class DebugFilesCommand {
         console.log(
           `${pc.green("✔")} ${file} ${id}: debug file ${debug === "exists" ? "already uploaded" : "uploaded"}`,
         );
-        if (!collected) continue;
+        if (!bundle) continue;
 
-        const bundle = await NativeModule.bundle({ codeId: inspection.codeId, files: collected });
         const result = await uploader.upload({
-          codeId: inspection.codeId,
+          codeId,
           kind: "sources",
           fileName: `${basename(file)}.sources.zip`,
           bytes: bundle,
@@ -210,7 +245,20 @@ export class DebugFilesCommand {
         .option(
           "--prefix <path>",
           "Build directory recorded in the debug file, when it differs from --root (e.g. /app in Docker)",
-        );
+        )
+        .hook("preAction", (current) => {
+          if (current.opts().includeSources) return;
+
+          const ignored = ["root", "prefix"].filter(
+            (name) => current.getOptionValueSource(name) === "cli",
+          );
+          if (ignored.length)
+            console.warn(
+              pc.yellow(
+                `Warning: ${ignored.map((name) => `--${name}`).join(" and ")} ignored without --include-sources`,
+              ),
+            );
+        });
 
     sourceOptions(
       command

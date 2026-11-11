@@ -221,6 +221,23 @@ test.group("debug-files upload", (group) => {
     }
   });
 
+  test("uploads nothing when a later file is invalid", async ({ assert }) => {
+    const api = await DebugFilesTest.api();
+    try {
+      const notes = join(build.directory, "notes.txt");
+      writeFileSync(notes, "not a debug file\n");
+      const result = await DebugFilesTest.run(["upload", build.binary, notes, "--url", api.url], {
+        MONOCLE_API_KEY: "deploy-token",
+      });
+
+      assert.equal(result.code, 1);
+      assert.include(result.stderr, `${notes}: not an ELF file`);
+      assert.lengthOf(api.requests, 0);
+    } finally {
+      await api.close();
+    }
+  });
+
   test("explains a rejected token", async ({ assert }) => {
     const api = await DebugFilesTest.api(() => 401);
     try {
@@ -270,5 +287,16 @@ test.group("debug-files check", (group) => {
     assert.equal(result.code, 0, result.stderr);
     assert.include(result.stdout, "Sources: 1 file(s)");
     assert.include(result.stdout, "    src/app.c\n");
+  });
+
+  test("rejects a build ID that Monocle does not accept", async ({ assert }) => {
+    execFileSync("cc", ["-g", "-O0", "-Wl,--build-id=0x0102", "-o", "short", "src/app.c"], {
+      cwd: build.directory,
+    });
+    const short = join(build.directory, "short");
+    const result = await DebugFilesTest.run(["check", short]);
+
+    assert.equal(result.code, 1);
+    assert.include(result.stderr, `${short} has a 2 byte build ID`);
   });
 });
