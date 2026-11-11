@@ -8,8 +8,11 @@ on:
 
 jobs:
   checks:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # CI_RUNNER=devbox-mac runs jobs on self-hosted runners, see
+    # infrastructure/ci-runner in monocle-sh/monocle.
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    # The first build of the WebAssembly module installs Rust and compiles symbolic.
+    timeout-minutes: 20
 
     steps:
       - name: Checkout repository
@@ -22,7 +25,8 @@ jobs:
         uses: actions/setup-node@v7.1.0
         with:
           node-version: "26.12.0"
-          cache: "pnpm"
+          # The GitHub cache downloads slowly outside GitHub-hosted runners.
+          cache: ${{ !vars.CI_RUNNER && 'pnpm' || '' }}
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
