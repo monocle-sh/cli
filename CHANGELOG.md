@@ -1,5 +1,15 @@
 # @monocle.sh/cli
 
+## 0.6.0
+
+### Minor Changes
+
+- [#8](https://github.com/monocle-sh/cli/pull/8) [`22ed938`](https://github.com/monocle-sh/cli/commit/22ed9381cc88edcf029303bdfcaf5251eab39305) Thanks [@Julien-R44](https://github.com/Julien-R44)! - Add `monocle debug-files upload` and `monocle debug-files check` to resolve Rust and other Linux ELF/DWARF stack traces. `--include-sources` also uploads the source files referenced by the debug file, for code excerpts.
+
+### Patch Changes
+
+- [#6](https://github.com/monocle-sh/cli/pull/6) [`6dad199`](https://github.com/monocle-sh/cli/commit/6dad1991e5945146b8241f133dd80fd54dd0152d) Thanks [@Julien-R44](https://github.com/Julien-R44)! - Point `monocle deploy` authentication errors to project tokens, the renamed deploy keys.
+
 ## 0.5.0
 
 ### Minor Changes
