@@ -27,6 +27,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # The debug-files commands embed symbolic compiled to WebAssembly. rustup installs the
+      # toolchain and target pinned in native/rust-toolchain.toml; zstd-sys needs the runner's clang.
+      - name: Build WebAssembly module
+        run: pnpm build:native
+
       - name: Lint
         run: pnpm lint
 

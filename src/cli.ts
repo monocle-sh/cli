@@ -6,6 +6,7 @@ import { readdirSync, readFileSync, rmSync } from "node:fs";
 import pc from "picocolors";
 import { program } from "commander";
 
+import { DebugFilesCommand } from "./debug_files/command.js";
 import { DeployCommand } from "./deploy/command.js";
 import { SourcemapsCommand } from "./sourcemaps/command.js";
 import { homedir } from "node:os";
@@ -24,6 +25,7 @@ program
   .version(pkg.version);
 
 SourcemapsCommand.register(program);
+DebugFilesCommand.register(program);
 
 /**
  * `monocle studio` command group — local DevTools server and data access.

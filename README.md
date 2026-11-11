@@ -103,6 +103,37 @@ Then deploy the injected files: the runtime snippet at the top of each file is w
 
 `upload` fails with code 1 when a file has a source map but no debug ID (run `inject` first), when the API key is missing or rejected, or when a file could not be stored. Network errors and HTTP 5xx responses are retried.
 
+## Debug files
+
+Monocle resolves native stack traces, such as Rust's, with the debug information of the exact build you deploy. Builds are matched by their GNU build ID, never by file name or release. Linux ELF/DWARF is supported.
+
+Build with `debug = 1` in `[profile.release]`, upload the binary before stripping it, then deploy the stripped binary:
+
+```bash
+cargo build --release --locked
+export MONOCLE_API_KEY="your-project-token"
+monocle debug-files upload target/release/api --include-sources --release "$(git rev-parse HEAD)"
+strip target/release/api
+```
+
+`--include-sources` reads the source files that the debug information references, from the checkout of the build, and uploads them for code excerpts. Only files beneath `--root` (the current directory by default) are read. When the build ran in another directory, such as `/app` in a Docker build stage, pass it with `--prefix /app`.
+
+`monocle debug-files check <files...>` prints each file's build ID without uploading. With `--include-sources`, it lists the source files that `upload` would send.
+
+### Debug file options
+
+| Option                | Default                                              |
+| --------------------- | ---------------------------------------------------- |
+| `--include-sources`   | Disabled                                             |
+| `--root <dir>`        | Current directory                                    |
+| `--prefix <path>`     | `--root`; the build directory recorded in DWARF      |
+| `--release <version>` | None; display only                                   |
+| `--force`             | Disabled; replaces files uploaded for the build ID   |
+| `--api-key <key>`     | `MONOCLE_API_KEY`, a project token with Deploy scope |
+| `--url <url>`         | `https://api.monocle.sh`                             |
+
+Files that Monocle already has for the same build ID are skipped. Debug files are limited to 200 MiB: for larger ones, upload `objcopy --only-keep-debug --compress-debug-sections=zlib` output instead.
+
 ## Declare a deployment
 
 Use a project token, created in your project settings. Legacy API keys also work. Browser keys and ingest DSNs cannot declare deployments.
