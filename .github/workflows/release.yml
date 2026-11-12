@@ -16,10 +16,12 @@ permissions:
 
 jobs:
   release:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
-    # CI_RUNNER=devbox-mac runs jobs on self-hosted runners, see
-    # infrastructure/ci-runner in monocle-sh/monocle.
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_repository.full_name == github.repository &&
+       github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
     timeout-minutes: 25
 
     steps:
@@ -35,8 +37,7 @@ jobs:
         uses: actions/setup-node@v7.1.0
         with:
           node-version: "26.12.0"
-          # The GitHub cache downloads slowly outside GitHub-hosted runners.
-          cache: ${{ !vars.CI_RUNNER && 'pnpm' || '' }}
+          cache: pnpm
           registry-url: "https://registry.npmjs.org"
 
       - name: Install dependencies
