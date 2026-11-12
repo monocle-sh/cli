@@ -1,3 +1,5 @@
+<img width="1500" height="500" alt="Monocle" src="https://github.com/user-attachments/assets/45d9a45e-2b49-40c3-86af-1fe3ce26858d" />
+
 <h1 align="center">Monocle CLI</h1>
 
 <p align="center">
